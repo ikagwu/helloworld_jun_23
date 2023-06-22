@@ -1,30 +1,44 @@
 pipeline {
     agent any
-
+    tools{
+        maven 'M2_HOME'
+    }
+    environment {
+    registry = '034822311183.dkr.ecr.us-east-1.amazonaws.com/devos_repository'
+    registryCredential = 'jenkins-ecr'
+    dockerimage = ''
+  }
     stages {
-        stage('Hello') {
-            steps {
-                echo 'Hello World'
-                sleep 5
+        stage('Checkout'){
+            steps{
+                git branch: 'main', url: 'https://github.com/ikagwu/helloworld_jun_23.git'
             }
         }
-          stage('Build') {
+        stage('Code Build') {
             steps {
-                echo 'Hello Build'
-                sleep 5
+                sh 'mvn clean package'
             }
         }
-          stage('Test') {
+        stage('Test') {
             steps {
-                echo 'Hello Test'
-                sleep 5
+                sh 'mvn test'
             }
         }
-          stage('Deploy') {
+        stage('Build Image') {
             steps {
-                echo 'Hello Deploy'
-                sleep 5
+                script{
+                    dockerImage = docker.build registry + ":$BUILD_NUMBER"
+                } 
             }
         }
+        stage('Deploy image') {
+            steps{
+                script{ 
+                    docker.withRegistry("https://"+registry,"ecr:us-east-1:"+registryCredential) {
+                        dockerImage.push()
+                    }
+                }
+            }
+        }  
     }
 }
